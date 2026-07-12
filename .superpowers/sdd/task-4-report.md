@@ -37,4 +37,4 @@ Complete.
 - Level nudging prevents ink contours from coinciding with zero level
 
 ## Commit Hashes
-(To be updated after git commit)
+- `9a4744a` — Task 4: marching-squares ink contours + red level-0 nodal set
