@@ -34,10 +34,65 @@ const state = {
 
 const ctrlButtons = {};
 
-// --- pipeline hooks (filled in by later tasks) ---
-function rollSources() {}
+// --- wave superposition pipeline ---
+
+function sourceAt(src, x, y) {
+    if (src.kind === 'radial') {
+        const r = Math.hypot(x - src.sx, y - src.sy);
+        return src.A * Math.sin(src.k * r + src.phase);
+    }
+    // linear plane wave
+    return src.A * Math.sin(src.k * (x * Math.cos(src.theta) + y * Math.sin(src.theta)) + src.phase);
+}
+
+function fieldAt(sources, x, y) {
+    let z = 0;
+    for (const s of sources) z += sourceAt(s, x, y);
+    return z;
+}
+
+function rollSources() {
+    const nOpt = CONTROL_DEFS[0].opts[ui.sources];
+    const K = nOpt === 'random' ? Math.floor(random(3, 7)) : parseInt(nOpt, 10);
+    // Mix: Radial → mostly radial, Balanced → ~50/50, Linear → mostly linear
+    const radialProb = [0.85, 0.5, 0.15][ui.mix];
+    const span = CS - 2 * PAD;
+    // frequency band: ~8–40 wavelengths across the page → k = 2π·waves/span
+    const kFor = () => (Math.PI * 2) * random(8, 40) / span;
+    state.sources = [];
+    for (let i = 0; i < K; i++) {
+        const A = random(0.6, 1.4);
+        const k = kFor();
+        const phase = random(Math.PI * 2);
+        if (random() < radialProb) {
+            // source point within (and slightly beyond) the drawable square
+            state.sources.push({
+                kind: 'radial', A, k, phase,
+                sx: PAD + random(-0.15, 1.15) * span,
+                sy: PAD + random(-0.15, 1.15) * span
+            });
+        } else {
+            state.sources.push({ kind: 'linear', A, k, phase, theta: random(Math.PI) });
+        }
+    }
+}
+
 function settle() {}
-function buildGrid() {}
+
+function buildGrid() {
+    const N = [320, 400, 480][ui.detail];
+    const cell = (CS - 2 * PAD) / N;
+    const field = new Float64Array(N * N);
+    for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+            const px = PAD + (x + 0.5) * cell, py = PAD + (y + 0.5) * cell;
+            field[y * N + x] = fieldAt(state.sources, px, py);
+        }
+    }
+    state.grid = { N, cell };
+    state.field = field;
+}
+
 function buildContours() {}
 
 function regenerate(newSeed) {
