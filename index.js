@@ -157,7 +157,125 @@ function buildGrid() {
     state.field = field;
 }
 
-function buildContours() {}
+function samplePt(gx, gy) {
+    const { cell } = state.grid;
+    return { x: PAD + (gx + 0.5) * cell, y: PAD + (gy + 0.5) * cell };
+}
+
+// standard 16-case marching squares on one 2x2 block; emits [x1,y1,x2,y2] grid coords
+function marchCell(x, y, v00, v10, v01, v11, lv, segs) {
+    let c = 0;
+    if (v00 >= lv) c |= 1;
+    if (v10 >= lv) c |= 2;
+    if (v11 >= lv) c |= 4;
+    if (v01 >= lv) c |= 8;
+    if (c === 0 || c === 15) return;
+    const t = (a, b) => (lv - a) / (b - a);
+    const top = () => [x + t(v00, v10), y];
+    const bottom = () => [x + t(v01, v11), y + 1];
+    const left = () => [x, y + t(v00, v01)];
+    const right = () => [x + 1, y + t(v10, v11)];
+    const add = (p, q) => segs.push([p[0], p[1], q[0], q[1]]);
+    switch (c) {
+        case 1: case 14: add(left(), top()); break;
+        case 2: case 13: add(top(), right()); break;
+        case 3: case 12: add(left(), right()); break;
+        case 4: case 11: add(right(), bottom()); break;
+        case 6: case 9: add(top(), bottom()); break;
+        case 7: case 8: add(left(), bottom()); break;
+        case 5: {
+            const mid = (v00 + v10 + v01 + v11) / 4 >= lv;
+            if (mid) { add(left(), top()); add(right(), bottom()); }
+            else { add(left(), bottom()); add(top(), right()); }
+            break;
+        }
+        case 10: {
+            const mid = (v00 + v10 + v01 + v11) / 4 >= lv;
+            if (mid) { add(top(), right()); add(left(), bottom()); }
+            else { add(left(), top()); add(right(), bottom()); }
+            break;
+        }
+    }
+}
+
+// chain undirected segments into polylines, float-tolerant via keyFn
+function chainSegments(segs, keyFn) {
+    const key = keyFn || ((x, y) => x + ',' + y);
+    const adj = new Map();
+    const addAdj = (k, si) => { if (!adj.has(k)) adj.set(k, []); adj.get(k).push(si); };
+    segs.forEach((s, si) => { addAdj(key(s[0], s[1]), si); addAdj(key(s[2], s[3]), si); });
+    const used = new Uint8Array(segs.length);
+    const chains = [];
+    for (let si = 0; si < segs.length; si++) {
+        if (used[si]) continue;
+        used[si] = 1;
+        const chain = [[segs[si][0], segs[si][1]], [segs[si][2], segs[si][3]]];
+        for (const end of [1, 0]) {
+            while (true) {
+                const tip = end ? chain[chain.length - 1] : chain[0];
+                const cands = (adj.get(key(tip[0], tip[1])) || []).filter(j => !used[j]);
+                if (!cands.length) break;
+                const j = cands[0];
+                used[j] = 1;
+                const s = segs[j];
+                const other = (Math.abs(s[0] - tip[0]) < 1e-9 && Math.abs(s[1] - tip[1]) < 1e-9)
+                    ? [s[2], s[3]] : [s[0], s[1]];
+                if (end) chain.push(other); else chain.unshift(other);
+            }
+        }
+        chains.push(chain);
+    }
+    return chains;
+}
+
+// corner-cutting smoothing, endpoints preserved
+function chaikin(pts) {
+    if (pts.length < 3) return pts;
+    const out = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+}
+
+function marchLevel(lv) {
+    const { N } = state.grid;
+    const f = state.field;
+    const segs = [];
+    for (let y = 0; y < N - 1; y++) {
+        for (let x = 0; x < N - 1; x++) {
+            marchCell(x, y,
+                f[y * N + x], f[y * N + x + 1],
+                f[(y + 1) * N + x], f[(y + 1) * N + x + 1], lv, segs);
+        }
+    }
+    const fkey = (x, y) => x.toFixed(6) + ',' + y.toFixed(6);
+    return chainSegments(segs, fkey).map(ch => chaikin(chaikin(ch.map(gp => samplePt(gp[0], gp[1])))));
+}
+
+function buildContours() {
+    state.contours = [];
+    state.nodes = [];
+    const { N } = state.grid;
+    const f = state.field;
+    if (!N) return;
+    const sorted = Float64Array.from(f).sort();
+    const p05 = sorted[Math.floor(0.05 * sorted.length)];
+    const p95 = sorted[Math.floor(0.95 * sorted.length)];
+    const M = LEVELS[ui.density];
+    const range = p95 - p05;
+    const eps = range > 0 ? range * 0.02 : 1e-6; // keep ink levels off 0
+    for (let li = 0; li < M; li++) {
+        let lv = p05 + ((li + 1) / (M + 1)) * range;
+        if (Math.abs(lv) < eps) lv += (lv >= 0 ? eps : -eps); // nudge off the nodal level
+        for (const pl of marchLevel(lv)) state.contours.push(pl);
+    }
+    // red nodal set: level exactly 0
+    for (const pl of marchLevel(0)) state.nodes.push(pl);
+}
 
 function regenerate(newSeed) {
     if (newSeed) state.masterSeed = Math.floor(Math.random() * 1e9);
