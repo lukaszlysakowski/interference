@@ -1,23 +1,25 @@
 # Task 3: Settle — Greedy Hill-Climb Toward Target Fringe Density
 
-**Status:** In progress
+**Status:** ✅ Complete
 
 ## Timeline
 
-- **Step 1: Implement constants & functions** — In progress
-  - Add SETTLE_N, TARGET_DENSITY, fringeDensity, settleScore, settle
+- **Step 1: Implement constants & functions** ✅
+  - Added SETTLE_N=80, TARGET_DENSITY=0.42, fringeDensity(), settleScore(), settle()
   
-- **Step 2: Create verify script** — Pending
-  - .superpowers/sdd/task-3-verify.js
+- **Step 2: Create verify script** ✅
+  - Created .superpowers/sdd/task-3-verify.js with 6 checks
   
-- **Step 3: Run verify** — Pending
-  - Expected: 6 passed, 0 failed
+- **Step 3: Run verify** ✅
+  - Result: 6 passed, 0 failed
   
-- **Step 4: Commit** — Pending
+- **Step 4: Commit** ✅
+  - Hash: `0413117`
 
 ## Decisions
 
-(none yet)
+- Kept brief's threshold `improved >= 5` (not loosened to 3); test passed, algorithm validated
+- Added `randomSeed()` calls to determinism test (not in brief) to reset p5 RNG state between runs
 
 ## Verify Output
 
