@@ -1,5 +1,7 @@
 # Interference
 
+> *A trio of self-referential systems — [Second Reading](https://github.com/lukaszlysakowski/second-reading) rereads itself, **Interference tunes itself**, [Drift](https://github.com/lukaszlysakowski/drift) remembers itself.*
+
 Overlapping coherent wave sources — radial ripples and linear gratings — superpose into
 one scalar field. The page is the field's iso-contours: where two wave families nearly
 align, contour spacing beats against itself and moiré emerges purely from line geometry.
