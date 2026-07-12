@@ -77,7 +77,71 @@ function rollSources() {
     }
 }
 
-function settle() {}
+const SETTLE_N = 80;        // cheap metric grid resolution
+const TARGET_DENSITY = 0.42; // desired fraction of page crossed by fringe
+
+// Coarse fringe-density estimate: on an 80² grid, count cells whose corner span
+// exceeds the contour interval (i.e. a level line passes through). Cheap proxy
+// for "how much of the page is covered by fringe."
+function fringeDensity(sources) {
+    const n = SETTLE_N;
+    const span = CS - 2 * PAD;
+    const step = span / n;
+    const g = new Float64Array((n + 1) * (n + 1));
+    let lo = Infinity, hi = -Infinity;
+    for (let y = 0; y <= n; y++) {
+        for (let x = 0; x <= n; x++) {
+            const v = fieldAt(sources, PAD + x * step, PAD + y * step);
+            g[y * (n + 1) + x] = v;
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+    }
+    const M = LEVELS[ui.density];
+    const interval = (hi - lo) / (M + 1);
+    if (interval <= 1e-9) return 0;
+    let crossed = 0;
+    for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+            const a = g[y * (n + 1) + x], b = g[y * (n + 1) + x + 1];
+            const c = g[(y + 1) * (n + 1) + x], d = g[(y + 1) * (n + 1) + x + 1];
+            const cmax = Math.max(a, b, c, d), cmin = Math.min(a, b, c, d);
+            if (cmax - cmin >= interval) crossed++;
+        }
+    }
+    return crossed / (n * n);
+}
+
+function settleScore(sources) {
+    return -Math.abs(fringeDensity(sources) - TARGET_DENSITY);
+}
+
+function settle() {
+    const steps = SETTLE_STEPS[ui.settle];
+    if (steps === 0) return;
+    const span = CS - 2 * PAD;
+    let score = settleScore(state.sources);
+    for (let s = 0; s < steps; s++) {
+        const rng = seededRng((state.masterSeed + s * 1013) >>> 0);
+        // snapshot for revert
+        const backup = state.sources.map(src => Object.assign({}, src));
+        for (const src of state.sources) {
+            src.phase += (rng() - 0.5) * 0.6;
+            if (src.kind === 'radial') {
+                src.sx += (rng() - 0.5) * 0.06 * span;
+                src.sy += (rng() - 0.5) * 0.06 * span;
+            } else {
+                src.theta += (rng() - 0.5) * 0.2;
+            }
+        }
+        const next = settleScore(state.sources);
+        if (next >= score) {
+            score = next; // keep
+        } else {
+            state.sources = backup; // revert
+        }
+    }
+}
 
 function buildGrid() {
     const N = [320, 400, 480][ui.detail];
