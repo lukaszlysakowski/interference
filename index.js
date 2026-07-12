@@ -5,7 +5,6 @@ const CS = 2170;
 const PAD = Math.round(CS * 0.04);
 const PAPER = '#F7E6D4';
 const INK = '#1A1613';
-const INK_RGB = [26, 22, 19];
 const RED = '#A93B2A';
 // Density → ink contour level count M.
 const LEVELS = [5, 9, 14]; // Sparse / Medium / Dense
