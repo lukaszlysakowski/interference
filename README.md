@@ -10,6 +10,8 @@ Before plotting, the field tunes itself: from a random roll, sources drift phase
 position under a greedy hill-climb that maximizes a legibility metric (fringe density near
 a target — neither empty nor mushed). No rating loop; the piece settles on its own.
 
+**Live maker:** https://lukaszlysakowski.github.io/interference/
+
 ## Running
 
 Static files, no build step: serve the directory (`npx serve . --listen 3463`) and open
