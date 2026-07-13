@@ -1,6 +1,6 @@
 # Interference
 
-> *A trio of self-referential systems — [Second Reading](https://github.com/lukaszlysakowski/second-reading) rereads itself, **Interference tunes itself**, [Drift](https://github.com/lukaszlysakowski/drift) remembers itself.*
+> *[Second Reading](https://github.com/lukaszlysakowski/second-reading) rereads itself, **Interference tunes itself**, [Drift](https://github.com/lukaszlysakowski/drift) remembers itself — and [Attrition](https://github.com/lukaszlysakowski/attrition) forgets itself.*
 
 Overlapping coherent wave sources — radial ripples and linear gratings — superpose into
 one scalar field. The page is the field's iso-contours: where two wave families nearly
